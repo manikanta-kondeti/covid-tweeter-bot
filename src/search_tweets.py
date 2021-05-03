@@ -1,17 +1,21 @@
+import time
+
 import requests
-import os
 import json
 
-# To set your environment variables in your terminal run the following line:
-# export 'BEARER_TOKEN'='<your_bearer_token>'
+from src.utils.basics import read_variable_from_file
+from src.utils.slack_utils import SlackUtils
 
 
 def auth():
-    return
+    tokens_file = open("tokens.json")
+    x = json.load(tokens_file)
+    print(x)
+    return x["bearer_token"]
 
 
-def create_url():
-    query = "from:twitterdev -is:retweet"
+def create_url(search_query):
+    query = search_query
     # Tweet fields are adjustable.
     # Options include:
     # attachments, author_id, context_annotations,
@@ -20,7 +24,7 @@ def create_url():
     # possibly_sensitive, promoted_metrics, public_metrics, referenced_tweets,
     # source, text, and withheld
     tweet_fields = "tweet.fields=author_id"
-    url = "https://api.twitter.com/2/tweets/search/recent?query=trump".format(
+    url = "https://api.twitter.com/2/tweets/search/recent?query={}&{}".format(
         query, tweet_fields
     )
     return url
@@ -38,14 +42,48 @@ def connect_to_endpoint(url, headers):
         raise Exception(response.status_code, response.text)
     return response.json()
 
+# tweet format: https://twitter.com/<author_id>/status/<conversation_id>
 
-def main():
+
+def execute():
+    medicines = read_variable_from_file("medicines")
+    cities = read_variable_from_file("cities")
+
+    tuples = construct_searchable_terms(medicines, cities)
+
+    for tup in tuples:
+        time.sleep(3)
+        search_query = tup[0] + " " + tup[1]
+        tweets = fetch_tweet(search_query)
+        analyse_tweets(tweets)
+
+
+def construct_searchable_terms(medicines, cities):
+
+    list_of_tuples = []
+    for i in medicines:
+        for j in cities:
+            list_of_tuples.append((i, j))
+
+    return list_of_tuples
+
+
+def fetch_tweet(search_query):
     bearer_token = auth()
-    url = create_url()
+    url = create_url(search_query)
     headers = create_headers(bearer_token)
+
     json_response = connect_to_endpoint(url, headers)
     print(json.dumps(json_response, indent=4, sort_keys=True))
+    return json_response
 
 
-if __name__ == "__main__":
-    main()
+def analyse_tweets(tweets):
+    for tweet in tweets["data"]:
+        author_id = tweet["author_id"]
+        conversation_id = tweet["id"]
+
+        payload = {"channel": "#covid19-tweets-findudaan", "username": "covid-tweet-helper-bot",
+                   "text": " https://twitter.com/{}/status/{} ".format(author_id, conversation_id), "icon_emoji": ":mask:"}
+        slack_utils = SlackUtils()
+        slack_utils.post_message(payload)
