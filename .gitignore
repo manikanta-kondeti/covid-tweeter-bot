@@ -1,0 +1,9 @@
+# created by virtualenv automatically
+tokens.json
+
+bin/
+lib/
+
+.idea/
+*.cfg
+
