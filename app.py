@@ -27,7 +27,7 @@ def scheduled_task():
     search_tweets.execute()
 
 
-schedule.every(590).seconds.do(scheduled_task)
+schedule.every(580).seconds.do(scheduled_task)
 
 
 if __name__ == "__main__":

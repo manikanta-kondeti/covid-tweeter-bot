@@ -22,7 +22,7 @@ def create_url(search_query):
     # in_reply_to_user_id, lang, non_public_metrics, organic_metrics,
     # possibly_sensitive, promoted_metrics, public_metrics, referenced_tweets,
     # source, text, and withheld
-    tweet_fields = "tweet.fields=author_id"
+    tweet_fields = "tweet.fields=author_id,conversation_id"
     now = datetime.now()
     now_minus_10 = now - timedelta(minutes=340)
     start_time = now_minus_10.isoformat("T", "milliseconds") + "Z"
@@ -52,33 +52,24 @@ def execute():
     cities = read_variable_from_file("cities")
     requirement_strings = read_variable_from_file("requirement_strings")
 
-    tuples = construct_searchable_terms(medicines, cities)
-
-    for tup in tuples:
+    for city in cities:
         time.sleep(5)
-        search_query = tup[1] + " " + getMedicines(medicines) + get_requirement_strings(requirement_strings) + ' -"VERIFIED"'
+        search_query = city + " " + get_medicines(medicines) + " " + get_requirement_strings(requirement_strings) + ' -"VERIFIED"'
         tweets = fetch_tweet(search_query)
         analyse_tweets(tweets)
 
 
 def get_requirement_strings(requirement_strings):
-    return "(" + "OR".join(requirement_strings) + ")"
+    return "(" + " OR ".join(requirement_strings) + ")"
 
-def getMedicines(meds):
+
+def get_medicines(meds):
     med_or_string = "("
     for med in meds:
         med_or_string += med + " OR "
 
     med_or_string += "fabiflu)"
     return med_or_string
-
-
-def construct_searchable_terms(medicines, cities):
-    list_of_tuples = []
-    for i in medicines:
-        for j in cities:
-            list_of_tuples.append((i, j))
-    return list_of_tuples
 
 
 def fetch_tweet(search_query):
@@ -96,9 +87,12 @@ def analyse_tweets(tweets):
         return
     for tweet in tweets["data"]:
         author_id = tweet["author_id"]
-        conversation_id = tweet["id"]
+        id = tweet["id"]
+
+        if "RT @" in tweet["text"]:
+            continue
 
         payload = {"channel": "#covid19-tweets-warroom", "username": "covid-tweet-listener-bot",
-                   "text": " https://twitter.com/{}/status/{} ".format(author_id, conversation_id), "icon_emoji": ":mask:"}
+                   "text": " https://twitter.com/{}/status/{} ".format(author_id, id), "icon_emoji": ":mask:"}
         slack_utils = SlackUtils()
         slack_utils.post_message(payload)
