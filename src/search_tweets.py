@@ -50,15 +50,19 @@ def connect_to_endpoint(url, headers):
 def execute():
     medicines = read_variable_from_file("medicines")
     cities = read_variable_from_file("cities")
+    requirement_strings = read_variable_from_file("requirement_strings")
 
     tuples = construct_searchable_terms(medicines, cities)
 
     for tup in tuples:
         time.sleep(5)
-        search_query = tup[1] + " " + getMedicines(medicines) + ' (needed OR need OR needs OR required OR require OR requires OR  requirement) -"VERIFIED"'
+        search_query = tup[1] + " " + getMedicines(medicines) + get_requirement_strings(requirement_strings) + ' -"VERIFIED"'
         tweets = fetch_tweet(search_query)
         analyse_tweets(tweets)
 
+
+def get_requirement_strings(requirement_strings):
+    return "(" + "OR".join(requirement_strings) + ")"
 
 def getMedicines(meds):
     med_or_string = "("
